@@ -776,6 +776,45 @@ HTML = r"""<!DOCTYPE html>
     padding-right:1.75rem;
   }
   input[type=number].fc::-webkit-inner-spin-button { opacity:.5; }
+
+  /* ── About modal ──────────────────────────────── */
+  #about-modal-backdrop {
+    position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:900;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity .2s;
+    pointer-events:none;
+  }
+  #about-modal-backdrop.open { opacity:1; pointer-events:auto; }
+  #about-modal {
+    background:#fff; border-radius:1rem; max-width:600px; width:92%;
+    max-height:90vh; overflow-y:auto;
+    transform:translateY(12px) scale(.98); transition:transform .2s;
+    box-shadow:0 25px 60px rgba(0,0,0,.3);
+  }
+  #about-modal-backdrop.open #about-modal { transform:translateY(0) scale(1); }
+  .about-hero {
+    background: linear-gradient(135deg, #14532d 0%, #166534 45%, #15803d 100%);
+    border-radius:1rem 1rem 0 0;
+    padding:2rem 2rem 1.75rem;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+  }
+  .about-hero::before {
+    content:'';
+    position:absolute; inset:0;
+    background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .about-feature {
+    display:flex; gap:1rem; align-items:flex-start;
+    padding:.875rem 0; border-bottom:1px solid #f1f5f9;
+  }
+  .about-feature:last-child { border-bottom:none; }
+  .about-icon {
+    width:2.5rem; height:2.5rem; border-radius:.625rem;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.25rem; flex-shrink:0;
+  }
 </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -792,6 +831,10 @@ HTML = r"""<!DOCTYPE html>
     </button>
     <span id="refresh-status" class="text-xs text-green-200">Idle</span>
     <div id="total-badge" class="text-sm text-green-200"></div>
+    <button id="btn-about" title="About PPR Browser"
+      class="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center transition text-sm font-bold">
+      &#9432;
+    </button>
   </div>
 </header>
 
@@ -1122,6 +1165,107 @@ HTML = r"""<!DOCTYPE html>
     </div><!-- /view-stats -->
 
   </main>
+</div>
+
+<!-- About modal -->
+<div id="about-modal-backdrop">
+  <div id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
+
+    <!-- Hero -->
+    <div class="about-hero">
+      <div class="relative z-10">
+        <div class="text-5xl mb-3">🏠</div>
+        <h1 id="about-title" class="text-2xl font-extrabold tracking-tight mb-1">PPR Browser</h1>
+        <p class="text-green-200 text-sm font-medium">Irish Property Price Register — local explorer</p>
+        <p class="text-green-100/80 text-xs mt-3 leading-relaxed max-w-md">
+          Every residential property sale in Ireland, reported to the Revenue Commissioners
+          and published by the Property Services Regulatory Authority, in one fast searchable interface.
+        </p>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-5">
+
+      <!-- Data badge -->
+      <div class="bg-green-50 border border-green-100 rounded-lg px-4 py-2.5 mb-5 flex items-center gap-3">
+        <span class="text-2xl">📋</span>
+        <div>
+          <p class="text-xs font-semibold text-green-800 uppercase tracking-wide">Source data</p>
+          <p class="text-sm text-green-900">
+            <strong id="about-total">—</strong> transactions &nbsp;·&nbsp; 2010 to present
+            &nbsp;·&nbsp; Updated via
+            <a href="https://www.propertypriceregister.ie" target="_blank"
+               class="underline">propertypriceregister.ie</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="divide-y divide-gray-100">
+
+        <div class="about-feature">
+          <div class="about-icon bg-blue-50">🔍</div>
+          <div>
+            <p class="font-semibold text-gray-800 text-sm">Search &amp; Filter</p>
+            <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Filter by address keyword, county, year range, price band, property type, and size.
+              Sort results by date or price. Paginate through thousands of matches instantly.
+            </p>
+          </div>
+        </div>
+
+        <div class="about-feature">
+          <div class="about-icon bg-purple-50">📊</div>
+          <div>
+            <p class="font-semibold text-gray-800 text-sm">Stats &amp; Charts</p>
+            <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Explore price trends by year and county, transaction volumes, new vs second-hand mix,
+              price distributions, the Million-Euro Club, seasonal patterns, and more.
+              All charts respond to your active filters.
+            </p>
+          </div>
+        </div>
+
+        <div class="about-feature">
+          <div class="about-icon bg-amber-50">🔄</div>
+          <div>
+            <p class="font-semibold text-gray-800 text-sm">Always up to date</p>
+            <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Click <em>Refresh Source File</em> in the header to download the latest PPR export
+              and rebuild the local database in the background — no restart needed.
+            </p>
+          </div>
+        </div>
+
+        <div class="about-feature">
+          <div class="about-icon bg-gray-50">💻</div>
+          <div>
+            <p class="font-semibold text-gray-800 text-sm">Runs locally</p>
+            <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              A lightweight Python/Flask app storing data in a local SQLite database.
+              Nothing leaves your machine. Source at
+              <a href="https://github.com/orancummins/ippw" target="_blank"
+                 class="text-blue-600 underline">github.com/orancummins/ippw</a>.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-5 flex justify-between items-center">
+        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+          <input id="about-hide-future" type="checkbox" class="accent-green-700">
+          Don't show on startup
+        </label>
+        <button id="about-close"
+          class="bg-green-700 hover:bg-green-800 text-white font-semibold px-5 py-2 rounded-lg text-sm transition">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1690,6 +1834,41 @@ function hide(...ids) { ids.forEach(id => document.getElementById(id).classList.
 
 loadMeta();
 updateRefreshStatus();
+
+// ── About modal ──────────────────────────────────────────────────────────────
+function openAbout() {
+  document.getElementById('about-modal-backdrop').classList.add('open');
+}
+function closeAbout() {
+  const bd = document.getElementById('about-modal-backdrop');
+  bd.classList.remove('open');
+  if (document.getElementById('about-hide-future').checked) {
+    localStorage.setItem('ppr-about-seen', '1');
+  }
+}
+document.getElementById('about-close').addEventListener('click', closeAbout);
+document.getElementById('btn-about').addEventListener('click', openAbout);
+document.getElementById('about-modal-backdrop').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeAbout();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAbout();
+});
+
+// Populate total in modal once meta loads
+const _origLoadMeta = loadMeta;
+loadMeta = async function() {
+  const res = await _origLoadMeta.apply(this, arguments);
+  const badge = document.getElementById('total-badge').textContent;
+  const m = badge.match(/[\d,]+/);
+  if (m) document.getElementById('about-total').textContent = m[0] + ' transactions';
+  return res;
+};
+
+// Show on first visit
+if (!localStorage.getItem('ppr-about-seen')) {
+  openAbout();
+}
 </script>
 </body>
 </html>
