@@ -449,11 +449,33 @@ def api_search():
         print(f"[search-diag] properties={_prop_count:,}  addr_fts={_fts_count:,}  args={dict(args)}", flush=True)
     except Exception as _e:
         print(f"[search-diag] count error: {_e}", flush=True)
+
+    # Test: does FTS MATCH work on a fresh connection WITHOUT query_only?
+    try:
+        import sqlite3 as _sq3
+        _raw = _sq3.connect(str(DB_PATH))
+        _fts_no_qo = _raw.execute(
+            "SELECT COUNT(*) FROM addr_fts f JOIN properties p ON p.id = f.rowid WHERE f.address MATCH ?",
+            ['"dublin"*']
+        ).fetchone()[0]
+        _raw.close()
+        print(f"[search-diag] fts_join_without_query_only={_fts_no_qo}", flush=True)
+    except Exception as _e:
+        print(f"[search-diag] fts_without_query_only error: {_e}", flush=True)
+
+    # Test: FTS MATCH through the query_only connection
+    try:
+        _fts_qo = db.execute(
+            "SELECT COUNT(*) FROM addr_fts f JOIN properties p ON p.id = f.rowid WHERE f.address MATCH ?",
+            ['"dublin"*']
+        ).fetchone()[0]
+        print(f"[search-diag] fts_join_with_query_only={_fts_qo}", flush=True)
+    except Exception as _e:
+        print(f"[search-diag] fts_with_query_only error: {_e}", flush=True)
     # -------------------------------------------------------------------------
 
     # Total matching count
     count_sql, count_params = _build_query(args, count_only=True)
-    print(f"[search-diag] count_sql={count_sql!r}  params={count_params}", flush=True)
     total = db.execute(count_sql, count_params).fetchone()[0]
     print(f"[search-diag] total={total}", flush=True)
 
