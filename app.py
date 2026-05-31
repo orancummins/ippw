@@ -254,6 +254,21 @@ def _refresh_worker() -> None:
             tmp_db.unlink()
 
         load_db(csv_path=CSV_PATH, db_path=tmp_db, skip_if_populated=False)
+
+        # Remove the temp DB's WAL/SHM (load_db checkpointed them, but
+        # clean up so the renamed file is entirely self-contained).
+        for suffix in ("-wal", "-shm"):
+            p = Path(str(tmp_db) + suffix)
+            if p.exists():
+                p.unlink()
+
+        # Also clear the live DB's old WAL/SHM so they don't confuse SQLite
+        # after the atomic rename below.
+        for suffix in ("-wal", "-shm"):
+            p = Path(str(DB_PATH) + suffix)
+            if p.exists():
+                p.unlink()
+
         tmp_db.replace(DB_PATH)
 
         conn = sqlite3.connect(str(DB_PATH))
@@ -1959,7 +1974,7 @@ async function poll() {
     if (!s.running && s.last_result === 'success') {
       document.getElementById('bar').style.width = '100%';
       document.getElementById('stage').textContent = 'Done! Loading…';
-      setTimeout(() => location.href = '/', 800);
+      setTimeout(() => location.reload(), 800);
       return;
     }
     if (!s.running && s.last_result === 'error') {
@@ -2004,6 +2019,21 @@ if __name__ == "__main__":
     _boot_conn = sqlite3.connect(str(DB_PATH))
     _boot_conn.executescript(SCHEMA)
     _boot_count = _boot_conn.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
+
+    if _boot_count > 0:
+        # Sanity-check FTS: if properties has rows but addr_fts is empty
+        # (e.g. WAL wasn't checkpointed during a previous DB swap), rebuild now.
+        try:
+            _fts_count = _boot_conn.execute("SELECT COUNT(*) FROM addr_fts").fetchone()[0]
+        except Exception:
+            _fts_count = 0
+        if _fts_count == 0:
+            print("[ppr] FTS index empty \u2014 rebuilding from existing data \u2026", flush=True)
+            _boot_conn.execute("INSERT INTO addr_fts(addr_fts) VALUES('rebuild')")
+            _boot_conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            _boot_conn.commit()
+            print("[ppr] FTS rebuild complete.", flush=True)
+
     _boot_conn.close()
 
     if _boot_count == 0:
