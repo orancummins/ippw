@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Data files (downloaded at runtime)
+PPR-ALL.csv
+PPR-ALL.zip
+*.csv
+*.zip
+
+# Databases (generated at runtime)
+*.db
+*.db-wal
+*.db-shm
+*.db.tmp
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
