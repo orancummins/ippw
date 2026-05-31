@@ -298,11 +298,12 @@ def _refresh_worker() -> None:
 
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=10)
         conn.row_factory = sqlite3.Row
         # NOTE: do NOT set query_only = ON here. FTS5 internally writes to its
         # shadow tables even during SELECT … MATCH queries; query_only blocks
         # those writes, causing FTS to return 0 results on many SQLite builds.
+        conn.execute("PRAGMA busy_timeout = 10000")
         g.db = conn
     return g.db
 
@@ -377,10 +378,13 @@ def _build_query(args, count_only=False) -> tuple[str, list]:
             JOIN properties p ON p.id = f.rowid
             WHERE f.address MATCH ?
         """
-        # Use simple prefix syntax (word*) — the quoted phrase-prefix
-        # syntax ("word"*) is not supported on all SQLite builds.
-        safe_q = address_q.replace('"', '').replace("'", '')
-        fts_params = [f'{safe_q}*']
+        # Strip all FTS5 special characters so user input can't generate
+        # invalid FTS syntax (which can cause SQLite to hang or error).
+        import re as _re
+        safe_q = _re.sub(r'["\'\(\)\-\+\*:&|^]', ' ', address_q).strip()
+        safe_q = _re.sub(r'\s+', ' ', safe_q)
+        # Wrap each word as a prefix term so multi-word searches work
+        fts_params = [' '.join(w + '*' for w in safe_q.split()) if safe_q else '*']
         if where_clause:
             # Append AND conditions (strip the leading " WHERE " keyword)
             sql += " AND " + where_clause[len(" WHERE "):]
