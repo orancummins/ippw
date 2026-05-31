@@ -444,34 +444,43 @@ def api_search():
 
     # ----- diagnostic logging ------------------------------------------------
     try:
+        import sqlite3 as _sq3
         _prop_count = db.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
         _fts_count  = db.execute("SELECT COUNT(*) FROM addr_fts").fetchone()[0]
-        print(f"[search-diag] properties={_prop_count:,}  addr_fts={_fts_count:,}  args={dict(args)}", flush=True)
+        print(f"[search-diag] sqlite_version={_sq3.sqlite_version}  properties={_prop_count:,}  addr_fts={_fts_count:,}  args={dict(args)}", flush=True)
     except Exception as _e:
         print(f"[search-diag] count error: {_e}", flush=True)
 
-    # Test: does FTS MATCH work on a fresh connection WITHOUT query_only?
-    try:
-        import sqlite3 as _sq3
-        _raw = _sq3.connect(str(DB_PATH))
-        _fts_no_qo = _raw.execute(
-            "SELECT COUNT(*) FROM addr_fts f JOIN properties p ON p.id = f.rowid WHERE f.address MATCH ?",
-            ['"dublin"*']
-        ).fetchone()[0]
-        _raw.close()
-        print(f"[search-diag] fts_join_without_query_only={_fts_no_qo}", flush=True)
-    except Exception as _e:
-        print(f"[search-diag] fts_without_query_only error: {_e}", flush=True)
-
-    # Test: FTS MATCH through the query_only connection
-    try:
-        _fts_qo = db.execute(
-            "SELECT COUNT(*) FROM addr_fts f JOIN properties p ON p.id = f.rowid WHERE f.address MATCH ?",
-            ['"dublin"*']
-        ).fetchone()[0]
-        print(f"[search-diag] fts_join_with_query_only={_fts_qo}", flush=True)
-    except Exception as _e:
-        print(f"[search-diag] fts_with_query_only error: {_e}", flush=True)
+    _addr_diag = args.get("address", "").strip()
+    if _addr_diag:
+        try:
+            _raw2 = _sq3.connect(str(DB_PATH))
+            # Try quoted prefix: "word"*
+            _q1 = _raw2.execute(
+                "SELECT COUNT(*) FROM addr_fts WHERE address MATCH ?",
+                [f'"{_addr_diag}"*']
+            ).fetchone()[0]
+            # Try unquoted prefix: word*
+            _q2 = _raw2.execute(
+                "SELECT COUNT(*) FROM addr_fts WHERE address MATCH ?",
+                [f'{_addr_diag}*']
+            ).fetchone()[0]
+            # Try plain equality
+            _q3 = _raw2.execute(
+                "SELECT COUNT(*) FROM addr_fts WHERE address MATCH ?",
+                [_addr_diag]
+            ).fetchone()[0]
+            # Sample rowids from FTS
+            _rowids = [r[0] for r in _raw2.execute(
+                "SELECT rowid FROM addr_fts WHERE address MATCH ? LIMIT 5",
+                [f'{_addr_diag}*']
+            ).fetchall()]
+            # Check those rowids exist in properties
+            _exists = [_raw2.execute("SELECT COUNT(*) FROM properties WHERE id=?", [rid]).fetchone()[0] for rid in _rowids]
+            _raw2.close()
+            print(f"[search-diag] quoted_prefix={_q1}  unquoted_prefix={_q2}  plain={_q3}  sample_rowids={_rowids}  rowids_exist={_exists}", flush=True)
+        except Exception as _e:
+            print(f"[search-diag] fts variant test error: {_e}", flush=True)
     # -------------------------------------------------------------------------
 
     # Total matching count
