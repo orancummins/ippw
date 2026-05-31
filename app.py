@@ -375,10 +375,13 @@ def _build_query(args, count_only=False) -> tuple[str, list]:
             JOIN properties p ON p.id = f.rowid
             WHERE f.address MATCH ?
         """
-        fts_params = [f'"{address_q}"*']  # prefix match, quoted for safety
+        # Use simple prefix syntax (word*) — the quoted phrase-prefix
+        # syntax ("word"*) is not supported on all SQLite builds.
+        safe_q = address_q.replace('"', '').replace("'", '')
+        fts_params = [f'{safe_q}*']
         if where_clause:
-            # Append AND conditions (skip the WHERE keyword we already have)
-            sql += " AND " + where_clause.lstrip(" WHERE ")
+            # Append AND conditions (strip the leading " WHERE " keyword)
+            sql += " AND " + where_clause[len(" WHERE "):]
             fts_params.extend(params)
         return sql, fts_params
     else:
@@ -439,6 +442,14 @@ def api_meta():
 
 @app.get("/api/search")
 def api_search():
+    try:
+        return _api_search_inner()
+    except Exception as exc:
+        print(f"[search-error] {exc}", flush=True)
+        return jsonify({"error": str(exc), "total": 0, "page": 1, "per_page": 50, "pages": 1, "stats": {}, "results": []}), 500
+
+
+def _api_search_inner():
     db   = get_db()
     args = request.args
 
