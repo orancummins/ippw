@@ -133,16 +133,8 @@ def load_db(
         return
 
     if not csv_path.exists():
-        print(f"[ppr] {csv_path.name} not found — downloading from propertypriceregister.ie …", flush=True)
-        try:
-            _download_latest_csv(csv_path)
-        except Exception as exc:
-            conn.close()
-            raise RuntimeError(
-                f"PPR CSV not found at {csv_path} and auto-download failed: {exc}\n"
-                "Download it manually from https://www.propertypriceregister.ie "
-                "and place it alongside app.py as PPR-ALL.csv"
-            ) from exc
+        conn.close()
+        raise FileNotFoundError(f"PPR CSV not found at {csv_path}")
 
     print(f"[ppr] Importing {csv_path.name} ({csv_path.stat().st_size // 1_048_576} MB) …", flush=True)
 
@@ -1699,8 +1691,80 @@ updateRefreshStatus();
 """
 
 
+SETUP_HTML = r"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PPR Browser — Setting up</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<div class="bg-white rounded-xl shadow-lg p-10 max-w-md w-full text-center">
+  <div class="text-5xl mb-4">🏠</div>
+  <h1 class="text-xl font-bold text-gray-800 mb-1">Setting up PPR Browser</h1>
+  <p class="text-sm text-gray-500 mb-6">Downloading data from propertypriceregister.ie…<br>This only happens once and takes a minute or two.</p>
+  <div class="w-full bg-gray-100 rounded-full h-2 mb-4 overflow-hidden">
+    <div id="bar" class="bg-green-600 h-2 rounded-full transition-all duration-500" style="width:5%"></div>
+  </div>
+  <p id="stage" class="text-sm text-gray-600 font-medium mb-1">Starting…</p>
+  <p id="error" class="text-sm text-red-600 hidden mt-3"></p>
+</div>
+<script>
+let pct = 5;
+const stages = {
+  'Downloading': 20,
+  'Rebuilding': 70,
+  'Refresh complete': 100,
+};
+async function poll() {
+  try {
+    const r = await fetch('/api/refresh/status');
+    const s = await r.json();
+    const stage = s.stage || '';
+    document.getElementById('stage').textContent = stage;
+    for (const [key, val] of Object.entries(stages)) {
+      if (stage.startsWith(key)) { pct = Math.max(pct, val); break; }
+    }
+    if (!s.running) pct = Math.max(pct, 90);
+    document.getElementById('bar').style.width = pct + '%';
+    if (!s.running && s.last_result === 'success') {
+      document.getElementById('bar').style.width = '100%';
+      document.getElementById('stage').textContent = 'Done! Loading…';
+      setTimeout(() => location.href = '/', 800);
+      return;
+    }
+    if (!s.running && s.last_result === 'error') {
+      const el = document.getElementById('error');
+      el.textContent = 'Error: ' + (s.last_error || 'unknown');
+      el.classList.remove('hidden');
+      document.getElementById('stage').textContent = 'Setup failed.';
+      return;
+    }
+  } catch(e) {}
+  setTimeout(poll, 2000);
+}
+poll();
+</script>
+</body>
+</html>
+"""
+
+
 @app.get("/")
 def index():
+    conn = sqlite3.connect(str(DB_PATH))
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
+    except Exception:
+        count = 0
+    finally:
+        conn.close()
+
+    state = _refresh_get_state()
+    if count == 0 and state.get("last_result") != "success":
+        return render_template_string(SETUP_HTML)
     return render_template_string(HTML)
 
 
@@ -1709,6 +1773,23 @@ def index():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    load_db()
+    # Ensure schema exists and check if we have data.
+    _boot_conn = sqlite3.connect(str(DB_PATH))
+    _boot_conn.executescript(SCHEMA)
+    _boot_count = _boot_conn.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
+    _boot_conn.close()
+
+    if _boot_count == 0:
+        print("[ppr] No data found — starting background download from propertypriceregister.ie …", flush=True)
+        _refresh_set_state(
+            running=True,
+            stage="Downloading source file from propertypriceregister.ie",
+            last_error=None,
+            last_result=None,
+        )
+        threading.Thread(target=_refresh_worker, daemon=True).start()
+    else:
+        print(f"[ppr] DB has {_boot_count:,} records — ready.", flush=True)
+
     print(f"[ppr] Starting on http://localhost:{PORT}", flush=True)
     app.run(host="0.0.0.0", port=PORT, debug=False)
