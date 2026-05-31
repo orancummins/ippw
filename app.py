@@ -442,9 +442,20 @@ def api_search():
     db   = get_db()
     args = request.args
 
+    # ----- diagnostic logging ------------------------------------------------
+    try:
+        _prop_count = db.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
+        _fts_count  = db.execute("SELECT COUNT(*) FROM addr_fts").fetchone()[0]
+        print(f"[search-diag] properties={_prop_count:,}  addr_fts={_fts_count:,}  args={dict(args)}", flush=True)
+    except Exception as _e:
+        print(f"[search-diag] count error: {_e}", flush=True)
+    # -------------------------------------------------------------------------
+
     # Total matching count
     count_sql, count_params = _build_query(args, count_only=True)
+    print(f"[search-diag] count_sql={count_sql!r}  params={count_params}", flush=True)
     total = db.execute(count_sql, count_params).fetchone()[0]
+    print(f"[search-diag] total={total}", flush=True)
 
     # Pagination
     page     = max(1, int(args.get("page", 1)))
