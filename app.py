@@ -735,6 +735,7 @@ HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PPR Browser</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2315803d'/%3E%3Cpath fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25'/%3E%3C/svg%3E">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -748,7 +749,8 @@ HTML = r"""<!DOCTYPE html>
   .badge-nfmp { background:#fef3c7; color:#92400e; }
   .badge-vat  { background:#ede9fe; color:#5b21b6; }
   th { white-space: nowrap; }
-  .tab-btn { padding: 0.5rem 1rem; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 500; color: #6b7280; }
+  .tab-btn { display:flex; align-items:center; gap:.375rem; padding:.5rem 1rem; border-bottom: 2px solid transparent; cursor: pointer; font-weight: 500; color: #6b7280; user-select:none; transition:color .15s; }
+  .tab-btn:hover { color:#374151; }
   .tab-btn.active { border-color: #15803d; color: #15803d; }
   .kpi-card { background:white; border-radius:.5rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); }
   .kpi-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; font-weight:600; }
@@ -821,19 +823,27 @@ HTML = r"""<!DOCTYPE html>
 
 <!-- Header -->
 <header class="bg-green-800 text-white px-6 py-3 flex items-center gap-4 shadow">
-  <div>
-    <span class="text-xl font-bold">🏠 PPR Browser</span>
-    <span class="ml-3 text-green-200 text-sm">Irish Property Price Register</span>
+  <div class="flex items-center gap-2.5">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-6 h-6 text-green-200 shrink-0">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+    <span class="text-lg font-bold tracking-tight">PPR Browser</span>
+    <span class="text-green-300 text-sm hidden sm:inline">Irish Property Price Register</span>
   </div>
   <div class="ml-auto flex items-center gap-3">
-    <button id="btn-refresh" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded transition">
-      Refresh Source File
+    <button id="btn-refresh" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded transition flex items-center gap-1.5">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+      </svg>
+      Refresh
     </button>
     <span id="refresh-status" class="text-xs text-green-200">Idle</span>
     <div id="total-badge" class="text-sm text-green-200"></div>
     <button id="btn-about" title="About PPR Browser"
-      class="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center transition text-sm font-bold">
-      &#9432;
+      class="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center transition">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-4.5 h-4.5 w-[18px] h-[18px]">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+      </svg>
     </button>
   </div>
 </header>
@@ -958,8 +968,18 @@ HTML = r"""<!DOCTYPE html>
 
     <!-- Tabs -->
     <div class="flex border-b border-gray-200 bg-white rounded-t-lg shadow-sm px-3">
-      <div id="tab-search" class="tab-btn active">🔍 Search</div>
-      <div id="tab-stats"  class="tab-btn">📊 Stats</div>
+      <div id="tab-search" class="tab-btn active">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        Search
+      </div>
+      <div id="tab-stats" class="tab-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+        </svg>
+        Stats
+      </div>
     </div>
 
     <!-- ═══════════ SEARCH VIEW ═══════════ -->
@@ -1174,7 +1194,11 @@ HTML = r"""<!DOCTYPE html>
     <!-- Hero -->
     <div class="about-hero">
       <div class="relative z-10">
-        <div class="text-5xl mb-3">🏠</div>
+        <div class="mb-4 w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-8 h-8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+        </div>
         <h1 id="about-title" class="text-2xl font-extrabold tracking-tight mb-1">PPR Browser</h1>
         <p class="text-green-200 text-sm font-medium">Irish Property Price Register — local explorer</p>
         <p class="text-green-100/80 text-xs mt-3 leading-relaxed max-w-md">
