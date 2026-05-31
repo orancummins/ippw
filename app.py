@@ -15,6 +15,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from flask import Flask, g, jsonify, render_template_string, request
 import requests
+try:
+    import truststore
+    truststore.inject_into_ssl()  # use macOS / Windows system trust store
+except ImportError:
+    pass  # truststore not installed — fall back to certifi / default SSL
 
 # ---------------------------------------------------------------------------
 # Config
