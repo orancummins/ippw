@@ -300,7 +300,9 @@ def get_db() -> sqlite3.Connection:
     if "db" not in g:
         conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA query_only = ON")
+        # NOTE: do NOT set query_only = ON here. FTS5 internally writes to its
+        # shadow tables even during SELECT … MATCH queries; query_only blocks
+        # those writes, causing FTS to return 0 results on many SQLite builds.
         g.db = conn
     return g.db
 
