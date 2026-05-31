@@ -367,26 +367,28 @@ def _build_query(args, count_only=False) -> tuple[str, list]:
     where_clause, params = _build_where(args)
 
     if address_q:
-        # FTS match + optional extra filters
-        if count_only:
-            select = "SELECT COUNT(*)"
-        else:
-            select = "SELECT p.*"
-        sql = f"""
-            {select}
-            FROM addr_fts f
-            JOIN properties p ON p.id = f.rowid
-            WHERE f.address MATCH ?
-        """
         # Strip all FTS5 special characters so user input can't generate
         # invalid FTS syntax (which can cause SQLite to hang or error).
         import re as _re
         safe_q = _re.sub(r'["\'\(\)\-\+\*:&|^]', ' ', address_q).strip()
         safe_q = _re.sub(r'\s+', ' ', safe_q)
         # Wrap each word as a prefix term so multi-word searches work
-        fts_params = [' '.join(w + '*' for w in safe_q.split()) if safe_q else '*']
+        fts_term = ' '.join(w + '*' for w in safe_q.split()) if safe_q else '*'
+
+        # Use a subquery for FTS lookup so column references in the outer
+        # WHERE (county, year, price, etc.) are unambiguously against
+        # `properties` and never confused with FTS shadow-table columns.
+        if count_only:
+            select = "SELECT COUNT(*)"
+        else:
+            select = "SELECT *"
+        sql = f"""
+            {select}
+            FROM properties
+            WHERE id IN (SELECT rowid FROM addr_fts WHERE address MATCH ?)
+        """
+        fts_params = [fts_term]
         if where_clause:
-            # Append AND conditions (strip the leading " WHERE " keyword)
             sql += " AND " + where_clause[len(" WHERE "):]
             fts_params.extend(params)
         return sql, fts_params
