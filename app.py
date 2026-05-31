@@ -133,8 +133,16 @@ def load_db(
         return
 
     if not csv_path.exists():
-        conn.close()
-        raise FileNotFoundError(f"PPR CSV not found at {csv_path}")
+        print(f"[ppr] {csv_path.name} not found — downloading from propertypriceregister.ie …", flush=True)
+        try:
+            _download_latest_csv(csv_path)
+        except Exception as exc:
+            conn.close()
+            raise RuntimeError(
+                f"PPR CSV not found at {csv_path} and auto-download failed: {exc}\n"
+                "Download it manually from https://www.propertypriceregister.ie "
+                "and place it alongside app.py as PPR-ALL.csv"
+            ) from exc
 
     print(f"[ppr] Importing {csv_path.name} ({csv_path.stat().st_size // 1_048_576} MB) …", flush=True)
 
