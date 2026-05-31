@@ -1321,7 +1321,7 @@ let refreshWasRunning = false;
 
 // ── Load metadata ────────────────────────────────────────────────────────────
 async function loadMeta() {
-  const res = await fetch('/api/meta');
+  const res = await fetch('api/meta');
   const d   = await res.json();
 
   const countyEl = document.getElementById('f-county');
@@ -1406,7 +1406,7 @@ async function search(page) {
 
   let data;
   try {
-    const res = await fetch('/api/search?' + params);
+    const res = await fetch('api/search?' + params);
     data = await res.json();
   } catch(e) {
     hide('loading');
@@ -1521,7 +1521,7 @@ document.getElementById('f-address').addEventListener('keydown', e => {
 // ── Source file refresh ─────────────────────────────────────────────────────
 async function updateRefreshStatus() {
   try {
-    const res = await fetch('/api/refresh/status');
+    const res = await fetch('api/refresh/status');
     const s = await res.json();
 
     const btn = document.getElementById('btn-refresh');
@@ -1563,7 +1563,7 @@ async function startRefresh() {
   }
 
   try {
-    const res = await fetch('/api/refresh', { method: 'POST' });
+    const res = await fetch('api/refresh', { method: 'POST' });
     const payload = await res.json();
     if (!res.ok || !payload.ok) {
       alert(payload.error || payload.message || 'Could not start refresh.');
@@ -1622,7 +1622,7 @@ async function loadStats() {
 
   let d;
   try {
-    const res = await fetch('/api/stats?' + params);
+    const res = await fetch('api/stats?' + params);
     d = await res.json();
   } catch(e) {
     hide('stats-loading');
@@ -1947,7 +1947,7 @@ const stages = {
 };
 async function poll() {
   try {
-    const r = await fetch('/api/refresh/status');
+    const r = await fetch('api/refresh/status');
     const s = await r.json();
     const stage = s.stage || '';
     document.getElementById('stage').textContent = stage;
