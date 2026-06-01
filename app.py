@@ -2090,7 +2090,6 @@ def index():
 
 if __name__ == "__main__":
     import sys
-    global SERVER_MODE
     if "--server" in sys.argv:
         SERVER_MODE = True
         _refresh_set_state(server_mode=True)
