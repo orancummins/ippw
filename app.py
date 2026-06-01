@@ -25,9 +25,11 @@ except ImportError:
 # Config
 # ---------------------------------------------------------------------------
 
-CSV_PATH = Path(__file__).parent / "PPR-ALL.csv"
-DB_PATH  = Path(__file__).parent / "ppr_web.db"
-PORT     = 2012
+CSV_PATH     = Path(__file__).parent / "PPR-ALL.csv"
+DB_PATH      = Path(__file__).parent / "ppr_web.db"
+PORT         = 2012
+SERVER_MODE  = False   # set to True via --server flag; disables manual refresh button
+AUTO_REFRESH_HOURS = 24  # how often to auto-refresh the data
 
 PPR_REFRESH_SOURCES = [
   "https://www.propertypriceregister.ie/website/npsra/PPR/npsra-ppr.nsf/Downloads/PPR-ALL.csv/$FILE/PPR-ALL.csv",
@@ -42,7 +44,9 @@ _refresh_state = {
   "last_result": None,
   "last_error": None,
   "last_success_at": None,
+  "next_refresh_at": None,
   "updated_at": None,
+  "server_mode": False,
 }
 
 app = Flask(__name__)
@@ -242,6 +246,30 @@ def _download_latest_csv(target: Path) -> str:
             return url
 
     raise RuntimeError("Could not download PPR source file: " + " | ".join(errors))
+
+
+def _schedule_next_refresh() -> None:
+    """Sleep AUTO_REFRESH_HOURS then kick off _refresh_worker, and repeat."""
+    from datetime import timedelta
+    next_at = datetime.now(timezone.utc) + timedelta(hours=AUTO_REFRESH_HOURS)
+    _refresh_set_state(next_refresh_at=next_at.isoformat())
+    print(f"[ppr] Next auto-refresh scheduled for {next_at.strftime('%Y-%m-%d %H:%M UTC')}", flush=True)
+
+    def _runner():
+        import time
+        time.sleep(AUTO_REFRESH_HOURS * 3600)
+        with _refresh_lock:
+            already_running = _refresh_state["running"]
+        if not already_running:
+            _refresh_set_state(
+                running=True,
+                stage="Auto-refresh: downloading source file",
+                last_error=None,
+            )
+            _refresh_worker()
+        _schedule_next_refresh()
+
+    threading.Thread(target=_runner, daemon=True).start()
 
 
 def _refresh_worker() -> None:
@@ -873,6 +901,7 @@ HTML = r"""<!DOCTYPE html>
       Refresh
     </button>
     <span id="refresh-status" class="text-xs text-green-200">Idle</span>
+    <span id="next-refresh" class="text-xs text-green-300 hidden"></span>
     <div id="total-badge" class="text-sm text-green-200"></div>
     <button id="btn-about" title="About PPR Browser"
       class="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center transition">
@@ -1553,6 +1582,18 @@ document.getElementById('f-address').addEventListener('keydown', e => {
 });
 
 // ── Source file refresh ─────────────────────────────────────────────────────
+function fmtNextRefresh(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  const now = new Date();
+  const diffMs = d - now;
+  if (diffMs <= 0) return 'soon';
+  const diffH = Math.floor(diffMs / 3600000);
+  const diffM = Math.floor((diffMs % 3600000) / 60000);
+  if (diffH >= 1) return `in ${diffH}h ${diffM}m`;
+  return `in ${diffM}m`;
+}
+
 async function updateRefreshStatus() {
   try {
     const res = await fetch('api/refresh/status');
@@ -1560,9 +1601,16 @@ async function updateRefreshStatus() {
 
     const btn = document.getElementById('btn-refresh');
     const label = document.getElementById('refresh-status');
-    btn.disabled = !!s.running;
-    btn.classList.toggle('opacity-60', !!s.running);
-    btn.classList.toggle('cursor-not-allowed', !!s.running);
+    const nextEl = document.getElementById('next-refresh');
+
+    // Hide refresh button in server mode
+    if (s.server_mode) {
+      btn.classList.add('hidden');
+    } else {
+      btn.disabled = !!s.running;
+      btn.classList.toggle('opacity-60', !!s.running);
+      btn.classList.toggle('cursor-not-allowed', !!s.running);
+    }
 
     if (s.running) {
       label.textContent = s.stage || 'Refreshing...';
@@ -1572,6 +1620,13 @@ async function updateRefreshStatus() {
       label.textContent = 'Refresh failed';
     } else {
       label.textContent = 'Idle';
+    }
+
+    if (s.next_refresh_at) {
+      nextEl.textContent = 'Next refresh ' + fmtNextRefresh(s.next_refresh_at);
+      nextEl.classList.remove('hidden');
+    } else {
+      nextEl.classList.add('hidden');
     }
 
     if (refreshWasRunning && !s.running && s.last_result === 'success') {
@@ -2066,6 +2121,17 @@ if __name__ == "__main__":
         threading.Thread(target=_refresh_worker, daemon=True).start()
     else:
         print(f"[ppr] DB has {_boot_count:,} records — ready.", flush=True)
+
+    # Parse --server flag
+    import sys
+    if "--server" in sys.argv:
+        global SERVER_MODE
+        SERVER_MODE = True
+        _refresh_set_state(server_mode=True)
+        print("[ppr] Running in server mode — manual refresh disabled.", flush=True)
+
+    # Schedule daily auto-refresh
+    _schedule_next_refresh()
 
     print(f"[ppr] Starting on http://localhost:{PORT}", flush=True)
     app.run(host="0.0.0.0", port=PORT, debug=False)

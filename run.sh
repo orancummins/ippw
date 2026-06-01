@@ -5,6 +5,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 PORT="${PORT:-2012}"
 
+# Parse flags
+SERVER_FLAG=""
+for arg in "$@"; do
+  case "$arg" in
+    --server) SERVER_FLAG="--server" ;;
+  esac
+done
+
 if [[ ! -d ".venv" ]]; then
   echo "[run] Creating virtual environment (.venv)"
   python3 -m venv .venv
@@ -39,4 +47,4 @@ if [[ -n "$existing_pids" ]]; then
 fi
 
 echo "[run] Starting app on http://localhost:$PORT"
-exec python app.py
+exec python app.py $SERVER_FLAG
