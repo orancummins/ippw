@@ -2089,6 +2089,13 @@ def index():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import sys
+    global SERVER_MODE
+    if "--server" in sys.argv:
+        SERVER_MODE = True
+        _refresh_set_state(server_mode=True)
+        print("[ppr] Running in server mode — manual refresh disabled.", flush=True)
+
     # Ensure schema exists and check if we have data.
     _boot_conn = sqlite3.connect(str(DB_PATH))
     _boot_conn.executescript(SCHEMA)
@@ -2121,14 +2128,6 @@ if __name__ == "__main__":
         threading.Thread(target=_refresh_worker, daemon=True).start()
     else:
         print(f"[ppr] DB has {_boot_count:,} records — ready.", flush=True)
-
-    # Parse --server flag
-    import sys
-    if "--server" in sys.argv:
-        global SERVER_MODE
-        SERVER_MODE = True
-        _refresh_set_state(server_mode=True)
-        print("[ppr] Running in server mode — manual refresh disabled.", flush=True)
 
     # Schedule daily auto-refresh
     _schedule_next_refresh()
