@@ -6,6 +6,7 @@ Loads PPR-ALL.csv into SQLite (ppr_web.db) on first run, then serves
 a query/filter UI on http://localhost:2012
 """
 
+import os
 import csv
 import io
 import sqlite3
@@ -2132,4 +2133,4 @@ if __name__ == "__main__":
     _schedule_next_refresh()
 
     print(f"[ppr] Starting on http://localhost:{PORT}", flush=True)
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=PORT, debug=False)
